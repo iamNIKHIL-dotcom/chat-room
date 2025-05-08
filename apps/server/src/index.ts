@@ -50,7 +50,32 @@ io.on('connection', (socket) =>{
 
         socket.emit('room-created', roomCode);
     })
+
+    socket.on("join-room", (data) =>{
+        const parsedData = JSON.parse(data);
+        const roomCode = parsedData.roomId;
+
+        const room = rooms.get(roomCode);
+
+        if(!room){
+            socket.emit("error", "room not found");
+            return;
+        }
+
+        socket.join(roomCode);
+
+        room.users.add(socket.id);
+        room.lastActive = Date.now();
+
+        socket.emit("joined-room", {
+            roomCode,
+            messages : room.messages
+        })
+
+        io.to(roomCode).emit('user-joined', room.users.size);
+    })
 })
+
 
 httpServer.listen(4000, ()=>{
     console.log("server running on 4000");
