@@ -1,7 +1,6 @@
 import { randomBytes } from "crypto";
 import express from "express"
 import { createServer } from "http";
-import { disconnect } from "process";
 import { Server } from "socket.io"
 
 
@@ -109,6 +108,15 @@ io.on('connection', (socket) =>{
     })
 })
 
+setInterval(() =>{
+    const now = Date.now();
+    rooms.forEach((room, roomCode) =>{
+        if(room.users.size === 0 && now - room.lastActive > 1800000){
+            console.log(`Cleaning up inactive room : ${roomCode}`);
+            rooms.delete(roomCode);
+        }
+    })
+}, 1000*60*30)
 
 httpServer.listen(4000, ()=>{
     console.log("server running on 4000");
