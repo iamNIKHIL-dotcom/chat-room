@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import express from "express"
 import { createServer } from "http";
+import { disconnect } from "process";
 import { Server } from "socket.io"
 
 
@@ -29,7 +30,7 @@ const io = new Server(httpServer, {
         methods:["GET","POST"]
     }
 })
-
+//room map
 const rooms = new Map<string, RoomData>();
 
 io.on('connection', (socket) =>{
@@ -73,6 +74,38 @@ io.on('connection', (socket) =>{
         })
 
         io.to(roomCode).emit('user-joined', room.users.size);
+    })
+
+    socket.on("send-message", ({ roomCode, message, userId, name}) => {
+        const room = rooms.get(roomCode);
+        if(room){
+            room.lastActive = Date.now();
+            const messageData : Message = {
+                id : randomBytes(4). toString('hex'),
+                content : message,
+                senderId : userId,
+                sender : name,
+                timestamp :new Date()
+            };
+            room.messages.push(messageData);
+
+            io.to(roomCode).emit("new-message", messageData);
+
+        }
+    })
+
+    socket.on("disconnect", ()=>{
+        rooms.forEach((room, roomCode) =>{
+            if(room.users.has(socket.id)){
+                room.users.delete(socket.id);
+                io.to(roomCode).emit("user-left", room.users.size);
+
+                if(room.users.size === 0){
+                    console.log(`deleting empty room : ${roomCode}`);
+                    rooms.delete(roomCode);
+                }
+            }
+        })
     })
 })
 
