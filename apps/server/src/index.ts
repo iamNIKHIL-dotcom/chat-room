@@ -46,6 +46,7 @@ io.on('connection', (socket) =>{
             messages : [],
             lastActive: Date.now()
         });
+        console.log("room created");
 
 
         socket.emit('room-created', roomCode);
