@@ -39,15 +39,15 @@ io.on('connection', (socket) =>{
 
     // });
     socket.on('create-room', () =>{
+        console.log("room created");
         const roomCode = randomBytes(3).toString('hex').toUpperCase();
-
+        console.log("Generated Room Code:", roomCode); // Debugging
+        
         rooms.set(roomCode, {
-            users : new Set<string>(),
-            messages : [],
+            users: new Set<string>(),
+            messages: [],
             lastActive: Date.now()
         });
-        console.log("room created");
-
 
         socket.emit('room-created', roomCode);
     })
