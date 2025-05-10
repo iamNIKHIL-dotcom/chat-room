@@ -1,162 +1,330 @@
-"use client"
+"use client";
 import Image, { type ImageProps } from "next/image";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import styles from "./page.module.css";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { ModeToggle } from "@/components/ThemeToggle"
-import { Loader2, MessageCircleIcon } from "lucide-react";
-import { io,Socket } from "socket.io-client"
-import { ChangeEvent,useEffect, useState } from "react";
-import { toast } from "sonner"
+// import styles from "./page.module.css";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { ModeToggle } from "@/components/ThemeToggle";
+import { Copy, Loader2, MessageCircleIcon } from "lucide-react";
+import { io, Socket } from "socket.io-client";
+import { ChangeEvent, useEffect, useState, useRef, FormEvent } from "react";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
   content: string;
   senderId: string;
-  sender:string;
+  sender: string;
   timestamp: Date;
 }
 
 interface ServerToClientEvents {
-  'room-created': (code: string) => void;
-  'joined-room': (data: { roomCode: string; messages: Message[] }) => void;
-  'new-message': (message: Message) => void;
-  'user-joined': (userCount: number) => void;
-  'user-left': (userCount: number) => void;
+  "room-created": (code: string) => void;
+  "joined-room": (data: { roomCode: string; messages: Message[] }) => void;
+  "new-message": (message: Message) => void;
+  "user-joined": (userCount: number) => void;
+  "user-left": (userCount: number) => void;
   error: (message: string) => void;
 }
 
 interface ClientToServerEvents {
-  'create-room': () => void;
-  'join-room': (roomCode: string) => void;
-  'send-message': (data: { roomCode: string; message: string; userId: string , name:string}) => void;
-  'set-user-id': (userId: string) => void;
+  "create-room": () => void;
+  "join-room": (roomCode: string) => void;
+  "send-message": (data: {
+    roomCode: string;
+    message: string;
+    userId: string;
+    name: string;
+  }) => void;
+  "set-user-id": (userId: string) => void;
 }
 
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL;
+const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
+  io(SOCKET_URL);
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ;
-const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(SOCKET_URL);
+const MessageGroup = ({
+  messages,
+  userId,
+}: {
+  messages: Message[];
+  userId: string;
+}) => {
+  return (
+    <>
+      {messages.map((msg, index) => {
+        const isFirstInGroup =
+          index === 0 || messages[index - 1]?.senderId !== msg.senderId;
 
+        return (
+          <div
+            key={msg.id}
+            className={`flex flex-col ${
+              msg.senderId === userId ? "items-end" : "items-start"
+            }`}
+          >
+            {isFirstInGroup && (
+              <div className="text-xs text-muted-foreground mb-0.5">
+                {msg.sender}
+              </div>
+            )}
+            <div
+              className={`inline-block rounded-lg px-3 py-1.5 break-words ${
+                msg.senderId === userId
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
+              } ${!isFirstInGroup ? "mt-0.5" : "mt-1.5"}`}
+            >
+              {msg.content}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+};
 export default function Home() {
-  const [ connected, setConnected ] = useState<boolean>(false);
-  const [ isLoading, setIsLoading ] = useState(false);
-  const [ name, setName ] = useState<string>("");
-  const [ inputCode, setInputCode ] = useState<string>("");
-  const [ roomCode, setRoomCode ] = useState<string>("");
+  const [connected, setConnected] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [name, setName] = useState<string>("");
+  const [inputCode, setInputCode] = useState<string>("");
+  const [roomCode, setRoomCode] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [users, setUsers] = useState<number>(0);
+  const [userId, setUserId] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   //useEffects
   useEffect(() => {
-    socket.on('room-created', (code) => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    const storedUserId = localStorage.getItem("chatUserId");
+    const newUserId = storedUserId || crypto.randomUUID();
+
+    if (!storedUserId) {
+      localStorage.setItem("chatUserId", newUserId);
+    }
+
+    setUserId(newUserId);
+    socket.emit("set-user-id", newUserId);
+  }, []);
+
+  useEffect(() => {
+    socket.on("room-created", (code) => {
       setRoomCode(code);
       setIsLoading(false);
-      toast.success('Room created successfully!');
+      toast.success("Room created successfully!");
     });
 
-    socket.on('joined-room', ({ roomCode, messages }) => {
+    socket.on("joined-room", ({ roomCode, messages }) => {
       setRoomCode(roomCode);
       setMessages(messages);
       setConnected(true);
-      setInputCode('');
-      toast.success('Joined room successfully!');
+      setInputCode("");
+      toast.success("Joined room successfully!");
     });
-  })
 
+    socket.on("user-joined", (userCount) => {
+      setUsers(userCount);
+    });
 
+    socket.on("new-message", (message) => {
+      setMessages((prev) => [...prev, message]);
+    });
+
+    socket.on("user-left", (userCount) => {
+      setUsers(userCount);
+      toast.info("A user has left the room");
+    });
+
+    socket.on("error", (error) => {
+      toast.error(error);
+      setIsLoading(false);
+      if (error === "Room not found" || error === "Room is full") {
+        setInputCode("");
+      }
+    });
+
+    return () => {
+      socket.off("room-created");
+      socket.off("joined-room");
+      socket.off("new-message");
+      socket.off("user-joined");
+      socket.off("user-left");
+      socket.off("error");
+    };
+  }, []);
+
+  //functions
   const createRoom = () => {
     setIsLoading(true);
     socket.emit("create-room");
-  }
-  const handleNameChange = (e : ChangeEvent<HTMLInputElement>) => {
-    setName(e.target.value)
-  }
-  const handleInputChange = (e : ChangeEvent<HTMLInputElement>) => {
-    setInputCode(e.target.value)
-  }
+  };
+  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+  };
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setInputCode(e.target.value);
+  };
   const joinRoom = () => {
-    if(!inputCode.trim()){
+    if (!inputCode.trim()) {
       toast.error("Please enter a room code");
       return;
     }
 
-     
     if (!name.trim()) {
-      toast.error('Please enter your name');
+      toast.error("Please enter your name");
       return;
     }
-    
-    socket.emit('join-room', JSON.stringify({roomId:inputCode.toUpperCase(),name}));
-  }
+
+    socket.emit(
+      "join-room",
+      JSON.stringify({ roomId: inputCode.toUpperCase(), name })
+    );
+  };
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard
+      .write([
+        new ClipboardItem({
+          "text/plain": new Blob([text], { type: "text/plain" }),
+        }),
+      ])
+      .then(() => {
+        toast.success("Room Copied to Clipboard!");
+      })
+      .catch(() => {
+        toast.error("Failed to copy room code");
+      });
+  };
+
+  const handleMessageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+  };
+
+  const sendMessage = (e: FormEvent) => {
+    e.preventDefault();
+    if (message.trim()) {
+      socket.emit("send-message", { roomCode, message, userId, name });
+      setMessage("");
+    }
+  };
 
   return (
     <>
       <div className="fixed top-4 right-4 z-50">
         <ModeToggle />
       </div>
-      <div className="container mx-auto max-w-2xl p-4 h-screen flex items-center justify-center">
-        <Card className="w-full ">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl flex items-center gap-2 font-bold"> 
-                <MessageCircleIcon className="w-6 h-6"/>
-                Real Time Chat
-                </CardTitle>
-              <CardDescription>
-               temporary room that expires after all users exit
-              </CardDescription>
-            </CardHeader>
+      <div className="flex items-center justify-center min-h-screen p-8 bg-background ">
+        <Card className="w-full max-w-xl bg-black text-white p-6 m-4 rounded-lg shadow-md">
+          <CardHeader className="space-y-2 p-4">
+            <CardTitle className="text-2xl flex items-center gap-2 font-bold">
+              <MessageCircleIcon className="w-6 h-6" />
+              Real Time Chat
+            </CardTitle>
+            <CardDescription className="text-base">
+              Temporary room that expires after all users exit
+            </CardDescription>
+          </CardHeader>
 
-            <CardContent>
-              { !connected ? (
-                <div className="space-y-4">
-                  <Button onClick ={ createRoom }
-                          className="w-full text-lg py-6"
-                          size = "lg"
-                          disabled= {isLoading}
-                  >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-2 w-4 animate-spin "/>
-                          Creating room..
-                        </>
-                      ): "Create New Room" }
-                  </Button>
-                  <div className="flex gap-2">
+          <CardContent className="space-y-6 p-6">
+            {!connected ? (
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={createRoom}
+                  className="w-full h-14 text-lg py-6 bg-white"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Creating room..
+                    </>
+                  ) : (
+                    "Create New Room"
+                  )}
+                </Button>
+
+                {/* Name Input */}
+                <div className="flex gap-4">
                   <Input
                     value={name}
                     onChange={handleNameChange}
                     placeholder="Enter your name"
-                    className="text-lg py-5"
+                    className="text-lg py-4 h-12 w-full"
                   />
                 </div>
+
+                {/* Room Code & Join Button */}
                 <div className="flex gap-2">
                   <Input
                     value={inputCode}
                     onChange={handleInputChange}
                     placeholder="Enter Room Code"
-                    className="text-lg py-5"
+                    className="text-lg h-12 w-full px-4"
                   />
-                  <Button 
+                  <Button
                     onClick={joinRoom}
-                    size="lg"
-                    className="px-8"
+                    className="bg-white w-40 h-12 px-6 py-2"
                   >
                     Join Room
                   </Button>
                 </div>
-
-
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-4 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span>
+                      Room Code:{" "}
+                      <span className="font-mono font-bold">{roomCode}</span>
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => copyToClipboard(roomCode)}
+                      className="h-6 w-6"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <span>Users: {users}</span>
                 </div>
 
-              ) : "Create New Room"}
+                <div className="h-[430px] overflow-y-auto border rounded-lg p-6 space-y-3">
+                  <MessageGroup messages={messages} userId={userId} />
+                  <div ref={messagesEndRef} />
+                </div>
 
-            </CardContent>
+                <form onSubmit={sendMessage} className="flex gap-4">
+                  <Input
+                    value={message}
+                    onChange={handleMessageChange}
+                    placeholder="Type a message..."
+                    className="text-lg py-4 w-full"
+                  />
+                  <Button type="submit" size="lg" className="px-8 py-2">
+                    Send
+                  </Button>
+                </form>
+              </>
+            )}
+          </CardContent>
         </Card>
-
       </div>
-      
     </>
-
-  )
+  );
 }

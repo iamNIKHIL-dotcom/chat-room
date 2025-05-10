@@ -35,9 +35,9 @@ const rooms = new Map<string, RoomData>();
 io.on('connection', (socket) =>{
     console.log("user connected :" , socket.id);
 
-    // socket.on('set-user-id', (userId: string) =>{
+    socket.on('set-user-id', (userId: string) =>{
 
-    // });
+    });
     socket.on('create-room', () =>{
         console.log("room created");
         const roomCode = randomBytes(3).toString('hex').toUpperCase();
