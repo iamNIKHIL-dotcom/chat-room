@@ -57,7 +57,7 @@ const MessageGroup = ({
   userId: string;
 }) => {
   return (
-    <>
+        <div className="flex flex-col gap-y-2">
       {messages.map((msg, index) => {
         const isFirstInGroup =
           index === 0 || messages[index - 1]?.senderId !== msg.senderId;
@@ -86,7 +86,7 @@ const MessageGroup = ({
           </div>
         );
       })}
-    </>
+    </div>
   );
 };
 export default function Home() {
@@ -228,11 +228,11 @@ export default function Home() {
       <div className="fixed top-4 right-4 z-50">
         <ModeToggle />
       </div>
-      <div className="flex items-center justify-center min-h-screen p-8 bg-background ">
-        <Card className="w-full max-w-xl bg-black text-white p-6 m-4 rounded-lg shadow-md">
-          <CardHeader className="space-y-2 p-4">
-            <CardTitle className="text-2xl flex items-center gap-2 font-bold">
-              <MessageCircleIcon className="w-6 h-6" />
+      <div className="flex items-center justify-center min-h-screen bg-background  sm:px-6 lg:px-8 ">
+        <Card className="w-full max-w-2xl mx-auto bg-black text-white rounded-lg shadow-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl flex items-center gap-1 font-bold">
+              <MessageCircleIcon className="w-9 h-9" />
               Real Time Chat
             </CardTitle>
             <CardDescription className="text-base">
@@ -240,12 +240,12 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6 p-6">
+          <CardContent className="space-y-3">
             {!connected ? (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 px-4">
                 <Button
                   onClick={createRoom}
-                  className="w-full h-14 text-lg py-6 bg-white"
+                  className="w-full h-14 text-lg py-6 bg-white px-4 font-semibold"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -264,7 +264,7 @@ export default function Home() {
                     value={name}
                     onChange={handleNameChange}
                     placeholder="Enter your name"
-                    className="text-lg py-4 h-12 w-full"
+                    className="text-lg py-4 h-12 w-full px-4"
                   />
                 </div>
 
@@ -278,14 +278,34 @@ export default function Home() {
                   />
                   <Button
                     onClick={joinRoom}
-                    className="bg-white w-40 h-12 px-6 py-2"
+                    className="bg-white w-40 h-12 px-6 py-2 font-semibold"
                   >
                     Join Room
                   </Button>
                 </div>
+                {roomCode && (
+                  <div className="text-center p-6 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Share this code with your friend
+                    </p>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className=" text-2xl font-bold">
+                        {roomCode}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => copyToClipboard(roomCode)}
+                        className="h-8 w-8"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <>
+              <div className="max-w-3xl mx-auto flex flex-col gap-6">
                 <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-4 rounded-lg">
                   <div className="flex items-center gap-2">
                     <span>
@@ -304,23 +324,29 @@ export default function Home() {
                   <span>Users: {users}</span>
                 </div>
 
-                <div className="h-[430px] overflow-y-auto border rounded-lg p-6 space-y-3">
+                <div className="h-[430px] overflow-y-auto border rounded-lg p-4 space-y-2">
                   <MessageGroup messages={messages} userId={userId} />
                   <div ref={messagesEndRef} />
                 </div>
-
-                <form onSubmit={sendMessage} className="flex gap-4">
-                  <Input
-                    value={message}
-                    onChange={handleMessageChange}
-                    placeholder="Type a message..."
-                    className="text-lg py-4 w-full"
-                  />
-                  <Button type="submit" size="lg" className="px-8 py-2">
-                    Send
-                  </Button>
-                </form>
-              </>
+                <div className="">
+                  
+                    <form onSubmit={sendMessage} className="flex gap-2">
+                      <Input
+                        value={message}
+                        onChange={handleMessageChange}
+                        placeholder="Type a message..."
+                        className="text-lg py-5"
+                        />
+                      <Button 
+                        type="submit"
+                        size="lg"
+                        className="px-8"
+                        >
+                        Send
+                      </Button>
+                    </form>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

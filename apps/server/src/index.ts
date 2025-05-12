@@ -24,32 +24,40 @@ const httpServer = createServer(app);
 
 
 const io = new Server(httpServer, {
-    cors :{
-        origin : "*",
-        methods:["GET","POST"]
-    }
+    cors: {
+        origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    pingTimeout: 60000,
+    pingInterval: 25000
 })
 //room map
 const rooms = new Map<string, RoomData>();
 
 io.on('connection', (socket) =>{
-    console.log("user connected :" , socket.id);
+    console.log("User connected:", socket.id);
 
     socket.on('set-user-id', (userId: string) =>{
-
+        console.log("User ID set:", userId);
     });
     socket.on('create-room', () =>{
-        console.log("room created");
-        const roomCode = randomBytes(3).toString('hex').toUpperCase();
-        console.log("Generated Room Code:", roomCode); // Debugging
-        
-        rooms.set(roomCode, {
-            users: new Set<string>(),
-            messages: [],
-            lastActive: Date.now()
-        });
+        try {
+            console.log("room created");
+            const roomCode = randomBytes(3).toString('hex').toUpperCase();
+            console.log("Generated Room Code:", roomCode); // Debugging
+            
+            rooms.set(roomCode, {
+                users: new Set<string>(),
+                messages: [],
+                lastActive: Date.now()
+            });
 
-        socket.emit('room-created', roomCode);
+            socket.emit('room-created', roomCode);
+        } catch (error) {
+            console.error("Error creating room:", error);
+            socket.emit("error", "Failed to create room");
+        }
     })
 
     socket.on("join-room", (data) =>{
@@ -118,6 +126,11 @@ setInterval(() =>{
         }
     })
 }, 1000*60*30)
+
+// Add error handling for the server
+httpServer.on('error', (error) => {
+    console.error('Server error:', error);
+});
 
 httpServer.listen(4000, ()=>{
     console.log("server running on 4000");
