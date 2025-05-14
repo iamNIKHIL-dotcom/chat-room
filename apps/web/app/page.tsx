@@ -2,7 +2,6 @@
 import Image, { type ImageProps } from "next/image";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-// import styles from "./page.module.css";
 import {
   Card,
   CardContent,
@@ -57,7 +56,7 @@ const MessageGroup = ({
   userId: string;
 }) => {
   return (
-        <div className="flex flex-col gap-y-2">
+    <div className="flex flex-col gap-y-2">
       {messages.map((msg, index) => {
         const isFirstInGroup =
           index === 0 || messages[index - 1]?.senderId !== msg.senderId;
@@ -89,6 +88,7 @@ const MessageGroup = ({
     </div>
   );
 };
+
 export default function Home() {
   const [connected, setConnected] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -106,22 +106,32 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  //useEffects
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("chatUserId");
-    const newUserId = storedUserId || crypto.randomUUID();
+    const storedUserId = localStorage.getItem("chatUserId") || crypto.randomUUID();
+    localStorage.setItem("chatUserId", storedUserId);
+    setUserId(storedUserId);
+    socket.emit("set-user-id", storedUserId);
 
-    if (!storedUserId) {
-      localStorage.setItem("chatUserId", newUserId);
+    const storedRoomCode = localStorage.getItem("chatRoomCode");
+    const storedName = localStorage.getItem("chatUserName");
+
+    if (storedRoomCode && storedName) {
+      setName(storedName);
+      setIsLoading(true);
+      socket.emit("join-room", JSON.stringify({ roomId: storedRoomCode, name: storedName }));
     }
-
-    setUserId(newUserId);
-    socket.emit("set-user-id", newUserId);
   }, []);
+
+  useEffect(() => {
+    if (connected) {
+      localStorage.setItem("chatRoomCode", roomCode);
+      localStorage.setItem("chatUserName", name);
+    }
+  }, [connected, roomCode, name]);
 
   useEffect(() => {
     socket.on("room-created", (code) => {
@@ -135,6 +145,7 @@ export default function Home() {
       setMessages(messages);
       setConnected(true);
       setInputCode("");
+      setIsLoading(false);
       toast.success("Joined room successfully!");
     });
 
@@ -156,6 +167,8 @@ export default function Home() {
       setIsLoading(false);
       if (error === "Room not found" || error === "Room is full") {
         setInputCode("");
+        localStorage.removeItem("chatRoomCode");
+        localStorage.removeItem("chatUserName");
       }
     });
 
@@ -169,58 +182,45 @@ export default function Home() {
     };
   }, []);
 
-  //functions
   const createRoom = () => {
     setIsLoading(true);
     socket.emit("create-room");
   };
-  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setName(e.target.value);
-  };
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setInputCode(e.target.value);
-  };
+
   const joinRoom = () => {
-    if (!inputCode.trim()) {
-      toast.error("Please enter a room code");
-      return;
-    }
-
-    if (!name.trim()) {
-      toast.error("Please enter your name");
-      return;
-    }
-
-    socket.emit(
-      "join-room",
-      JSON.stringify({ roomId: inputCode.toUpperCase(), name })
-    );
-  };
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard
-      .write([
-        new ClipboardItem({
-          "text/plain": new Blob([text], { type: "text/plain" }),
-        }),
-      ])
-      .then(() => {
-        toast.success("Room Copied to Clipboard!");
-      })
-      .catch(() => {
-        toast.error("Failed to copy room code");
-      });
+    if (!inputCode.trim()) return toast.error("Please enter a room code");
+    if (!name.trim()) return toast.error("Please enter your name");
+    socket.emit("join-room", JSON.stringify({ roomId: inputCode.toUpperCase(), name }));
   };
 
-  const handleMessageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setMessage(e.target.value);
-  };
+  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => setName(e.target.value);
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => setInputCode(e.target.value);
+  const handleMessageChange = (e: ChangeEvent<HTMLInputElement>) => setMessage(e.target.value);
 
   const sendMessage = (e: FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
-      socket.emit("send-message", { roomCode, message, userId, name });
-      setMessage("");
-    }
+    if (!message.trim()) return;
+    socket.emit("send-message", { roomCode, message, userId, name });
+    setMessage("");
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success("Room Copied to Clipboard!"))
+      .catch(() => toast.error("Failed to copy room code"));
+  };
+
+  const leaveRoom = () => {
+    socket.disconnect();
+    socket.connect();
+    localStorage.removeItem("chatRoomCode");
+    localStorage.removeItem("chatUserName");
+    setConnected(false);
+    setRoomCode("");
+    setMessages([]);
+    setUsers(0);
+    setName("");
+    toast.info("You left the room");
   };
 
   return (
@@ -228,7 +228,7 @@ export default function Home() {
       <div className="fixed top-4 right-4 z-50">
         <ModeToggle />
       </div>
-      <div className="flex items-center justify-center min-h-screen bg-background  sm:px-6 lg:px-8 ">
+      <div className="flex items-center justify-center min-h-screen bg-background sm:px-6 lg:px-8">
         <Card className="w-full max-w-2xl mx-auto bg-black text-white rounded-lg shadow-md">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl flex items-center gap-1 font-bold">
@@ -258,17 +258,13 @@ export default function Home() {
                   )}
                 </Button>
 
-                {/* Name Input */}
-                <div className="flex gap-4">
-                  <Input
-                    value={name}
-                    onChange={handleNameChange}
-                    placeholder="Enter your name"
-                    className="text-lg py-4 h-12 w-full px-4"
-                  />
-                </div>
+                <Input
+                  value={name}
+                  onChange={handleNameChange}
+                  placeholder="Enter your name"
+                  className="text-lg py-4 h-12 w-full px-4"
+                />
 
-                {/* Room Code & Join Button */}
                 <div className="flex gap-2">
                   <Input
                     value={inputCode}
@@ -283,15 +279,14 @@ export default function Home() {
                     Join Room
                   </Button>
                 </div>
+
                 {roomCode && (
                   <div className="text-center p-6 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground mb-2">
                       Share this code with your friend
                     </p>
                     <div className="flex items-center justify-center gap-2">
-                      <span className=" text-2xl font-bold">
-                        {roomCode}
-                      </span>
+                      <span className="text-2xl font-bold">{roomCode}</span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -321,31 +316,35 @@ export default function Home() {
                       <Copy className="h-3 w-3" />
                     </Button>
                   </div>
-                  <span>Users: {users}</span>
+                  <div className="flex items-center gap-4">
+                    <span>Users: {users}</span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={leaveRoom}
+                      className="h-8"
+                    >
+                      Leave Room
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="h-[430px] overflow-y-auto border rounded-lg p-4 space-y-2">
                   <MessageGroup messages={messages} userId={userId} />
                   <div ref={messagesEndRef} />
                 </div>
-                <div className="">
-                  
-                    <form onSubmit={sendMessage} className="flex gap-2">
-                      <Input
-                        value={message}
-                        onChange={handleMessageChange}
-                        placeholder="Type a message..."
-                        className="text-lg py-5"
-                        />
-                      <Button 
-                        type="submit"
-                        size="lg"
-                        className="px-8"
-                        >
-                        Send
-                      </Button>
-                    </form>
-                </div>
+
+                <form onSubmit={sendMessage} className="flex gap-2">
+                  <Input
+                    value={message}
+                    onChange={handleMessageChange}
+                    placeholder="Type a message..."
+                    className="text-lg py-5"
+                  />
+                  <Button type="submit" size="lg" className="px-8">
+                    Send
+                  </Button>
+                </form>
               </div>
             )}
           </CardContent>
