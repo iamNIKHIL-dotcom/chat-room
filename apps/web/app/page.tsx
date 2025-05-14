@@ -229,7 +229,8 @@ export default function Home() {
         <ModeToggle />
       </div>
       <div className="flex items-center justify-center min-h-screen bg-background sm:px-6 lg:px-8">
-        <Card className="w-full max-w-2xl mx-auto bg-black text-white rounded-lg shadow-md">
+<Card className="w-full max-w-2xl mx-auto rounded-lg shadow-md bg-background text-foreground   border-black">
+
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl flex items-center gap-1 font-bold">
               <MessageCircleIcon className="w-9 h-9" />
@@ -245,7 +246,7 @@ export default function Home() {
               <div className="flex flex-col gap-3 px-4">
                 <Button
                   onClick={createRoom}
-                  className="w-full h-14 text-lg py-6 bg-white px-4 font-semibold"
+className="w-full h-14 text-lg py-6 font-semibold"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -262,7 +263,7 @@ export default function Home() {
                   value={name}
                   onChange={handleNameChange}
                   placeholder="Enter your name"
-                  className="text-lg py-4 h-12 w-full px-4"
+                  className="text-lg py-4 h-12 w-full px-4 border-2 border-black"
                 />
 
                 <div className="flex gap-2">
@@ -270,11 +271,11 @@ export default function Home() {
                     value={inputCode}
                     onChange={handleInputChange}
                     placeholder="Enter Room Code"
-                    className="text-lg h-12 w-full px-4"
+                    className="text-lg h-12 w-full px-4 border-2 border-black"
                   />
                   <Button
                     onClick={joinRoom}
-                    className="bg-white w-40 h-12 px-6 py-2 font-semibold"
+                    className=" w-40 h-12 px-6 py-2 font-semibold"
                   >
                     Join Room
                   </Button>
@@ -339,7 +340,7 @@ export default function Home() {
                     value={message}
                     onChange={handleMessageChange}
                     placeholder="Type a message..."
-                    className="text-lg py-5"
+                    className="text-lg py-5 border-black"
                   />
                   <Button type="submit" size="lg" className="px-8">
                     Send

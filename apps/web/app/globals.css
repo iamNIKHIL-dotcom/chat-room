@@ -36,18 +36,18 @@ a {
   display: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
-  }
+.dark html {
+  color-scheme: dark;
 }
+
+.dark .imgLight {
+  display: none;
+}
+
+.dark .imgDark {
+  display: unset;
+}
+
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);

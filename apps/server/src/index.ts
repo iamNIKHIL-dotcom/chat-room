@@ -123,7 +123,9 @@ io.on("connection", (socket) => {
     rooms.forEach((room, roomCode) => {
       if (room.users.has(disconnectedSocketId)) {
           io.to(roomCode).emit("user-left", room.users.size);
-          
+          //when single user is there  on refreshing socket deleting room,
+          //asuming no user is there in room so
+          //this is fix--
           // Delay the deletion check by 10 seconds
           setTimeout(() => {
             room.users.delete(disconnectedSocketId);
