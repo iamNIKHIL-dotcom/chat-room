@@ -1,0 +1,37 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  code        String      @id
+  lastActive  DateTime    @default(now())
+  users       RoomUser[]
+  messages    Message[]
+}
+
+model RoomUser {
+  id        String   @id @default(uuid())
+  roomCode  String
+  socketId  String
+
+  room      Room     @relation(fields: [roomCode], references: [code], onDelete: Cascade)
+
+  @@unique([roomCode, socketId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  senderId   String
+  sender     String
+  timestamp  DateTime @default(now())
+  roomCode   String
+
+  room       Room     @relation(fields: [roomCode], references: [code], onDelete: Cascade)
+}
