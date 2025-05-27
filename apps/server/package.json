@@ -12,7 +12,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@repo/db": "*",
     "@types/node": "^22.15.3",
+    "cors": "^2.8.5",
     "express": "^5.1.0",
     "http": "^0.0.1-security",
     "socket.io": "^4.8.1"

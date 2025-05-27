@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import cors from "cors";
 
 interface Message {
   id: string;
@@ -18,6 +19,17 @@ interface RoomData {
 }
 
 const app = express();
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://chat-room-web-nikhil01s-projects.vercel.app/",
+    "https://chat-room-web-six.vercel.app/",
+    "https://chat-room-web-git-main-nikhil01s-projects.vercel.app/"
+  ],
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
