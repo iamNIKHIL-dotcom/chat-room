@@ -32,7 +32,7 @@ app.use(cors({
   credentials: true,
 }));
 
-app.options("*", cors()); // <== handles preflight for all routes
+
 
 const httpServer = createServer(app);
 
