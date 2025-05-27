@@ -44,7 +44,7 @@ interface ClientToServerEvents {
   "set-user-id": (userId: string) => void;
 }
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL;
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "https://chat-room-5-2tez.onrender.com/";
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
   io(SOCKET_URL);
 
