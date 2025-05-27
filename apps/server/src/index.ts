@@ -19,28 +19,38 @@ interface RoomData {
 }
 
 const app = express();
+// Before all route handlers
 app.use(cors({
   origin: [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://chat-room-web-nikhil01s-projects.vercel.app/",
-    "https://chat-room-web-six.vercel.app/",
-    "https://chat-room-web-git-main-nikhil01s-projects.vercel.app/"
+    "https://chat-room-web-nikhil01s-projects.vercel.app",
+    "https://chat-room-web-six.vercel.app",
+    "https://chat-room-web-git-main-nikhil01s-projects.vercel.app"
   ],
   methods: ["GET", "POST"],
   credentials: true,
 }));
+
+app.options("*", cors()); // <== handles preflight for all routes
+
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000", "https://chat-room-web-nikhil01s-projects.vercel.app/", "https://chat-room-web-six.vercel.app/", "https://chat-room-web-git-main-nikhil01s-projects.vercel.app/"],
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://chat-room-web-nikhil01s-projects.vercel.app",
+      "https://chat-room-web-six.vercel.app",
+      "https://chat-room-web-git-main-nikhil01s-projects.vercel.app"
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
-  pingTimeout: 60000,
-  pingInterval: 25000,
+  transports: ["websocket", "polling"],
 });
+
 
 // Room and user tracking maps
 const rooms = new Map<string, RoomData>();
